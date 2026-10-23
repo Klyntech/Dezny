@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
@@ -14,15 +14,32 @@ from app.storage import get_bytes
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger("dezny.worker")
-MAX_ATTEMPTS = 5
+MAX_ATTEMPTS = 5\nJOB_LEASE_TIMEOUT = timedelta(minutes=5)
 
 
 async def claim_job():
     async with session_factory()() as session:
         async with session.begin():
+            now = datetime.now(UTC)
+            stale_before = now - JOB_LEASE_TIMEOUT
+            # Requeue jobs abandoned by a crashed worker. Exhausted jobs become terminal failures.
+            await session.execute(
+                update(IngestionJob)
+                .where(IngestionJob.status == "processing", IngestionJob.locked_at < stale_before,
+                       IngestionJob.attempts < MAX_ATTEMPTS)
+                .values(status="retry", locked_at=None, available_at=now,
+                        last_error="Worker lease expired; job safely requeued.")
+            )
+            await session.execute(
+                update(IngestionJob)
+                .where(IngestionJob.status == "processing", IngestionJob.locked_at < stale_before,
+                       IngestionJob.attempts >= MAX_ATTEMPTS)
+                .values(status="failed", locked_at=None,
+                        last_error="Worker lease expired after maximum attempts.")
+            )
             statement = (select(IngestionJob)
                 .where(IngestionJob.status.in_(["queued", "retry"]),
-                       IngestionJob.available_at <= datetime.now(UTC),
+                       IngestionJob.available_at <= now,
                        IngestionJob.attempts < MAX_ATTEMPTS)
                 .order_by(IngestionJob.created_at).with_for_update(skip_locked=True).limit(1))
             job = (await session.execute(statement)).scalar_one_or_none()
@@ -80,7 +97,7 @@ async def process_job(job: dict) -> None:
                     record.status = "retry" if record.attempts < MAX_ATTEMPTS else "failed"
                     record.available_at = datetime.now(UTC) + timedelta(seconds=min(300, 5 * 2 ** record.attempts))
                 if current:
-                    current.status = "failed"
+                    current.status = "queued" if record and record.status == "retry" else "failed"
                     current.error_message = f"{type(exc).__name__}: {str(exc)[:1000]}"
 
 
