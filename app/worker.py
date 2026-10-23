@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,7 +22,7 @@ async def claim_job():
         async with session.begin():
             statement = (select(IngestionJob)
                 .where(IngestionJob.status.in_(["queued", "retry"]),
-                       IngestionJob.available_at <= datetime.now(timezone.utc),
+                       IngestionJob.available_at <= datetime.now(UTC),
                        IngestionJob.attempts < MAX_ATTEMPTS)
                 .order_by(IngestionJob.created_at).with_for_update(skip_locked=True).limit(1))
             job = (await session.execute(statement)).scalar_one_or_none()
