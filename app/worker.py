@@ -14,7 +14,8 @@ from app.storage import get_bytes
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger("dezny.worker")
-MAX_ATTEMPTS = 5\nJOB_LEASE_TIMEOUT = timedelta(minutes=5)
+MAX_ATTEMPTS = 5
+JOB_LEASE_TIMEOUT = timedelta(minutes=5)
 
 
 async def claim_job():
