@@ -69,3 +69,28 @@ services:
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
+
+  - type: worker
+    name: dezny-telegram-bot
+    runtime: docker
+    repo: https://github.com/Klyntech/Dezny
+    branch: main
+    region: frankfurt
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m app.telegram_bot
+    envVars:
+      - key: DEZNY_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEZNY_API_URL
+        value: https://dezny-api.onrender.com
+      - key: DEZNY_API_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ALLOWED_USER_IDS
+        sync: false
