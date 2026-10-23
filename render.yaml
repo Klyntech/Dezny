@@ -43,7 +43,7 @@ services:
     repo: https://github.com/Klyntech/Dezny
     branch: main
     region: frankfurt
-    plan: free
+    plan: starter
     autoDeploy: true
     dockerfilePath: ./Dockerfile
     dockerContext: .
