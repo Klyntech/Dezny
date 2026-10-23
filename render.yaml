@@ -37,40 +37,7 @@ services:
       - key: TAVILY_API_KEY
         sync: false
 
-  - type: worker
-    name: dezny-ingestion-worker
-    runtime: docker
-    repo: https://github.com/Klyntech/Dezny
-    branch: main
-    region: frankfurt
-    plan: free
-    autoDeploy: true
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: ./start-worker.sh
-    envVars:
-      - key: DEZNY_ENV
-        value: production
-      - key: LOG_LEVEL
-        value: INFO
-      - key: OCR_ENABLED
-        value: "true"
-      - key: S3_REGION
-        value: auto
-      - key: DATABASE_URL
-        sync: false
-      - key: NVIDIA_API_KEY
-        sync: false
-      - key: S3_ENDPOINT_URL
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_ACCESS_KEY_ID
-        sync: false
-      - key: S3_SECRET_ACCESS_KEY
-        sync: false
-
-  - type: worker
+  - type: web
     name: dezny-telegram-bot
     runtime: docker
     repo: https://github.com/Klyntech/Dezny
@@ -80,7 +47,8 @@ services:
     autoDeploy: true
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: python -m app.telegram_bot
+    dockerCommand: uvicorn app.telegram_service:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
     envVars:
       - key: DEZNY_ENV
         value: production
@@ -93,4 +61,6 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_ALLOWED_USER_IDS
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
