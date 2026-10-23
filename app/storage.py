@@ -22,6 +22,8 @@ async def put_bytes(key: str, content: bytes, content_type: str) -> None:
     if s.object_storage_enabled:
         await asyncio.to_thread(_client().put_object, Bucket=s.s3_bucket, Key=key, Body=content, ContentType=content_type)
         return
+    if s.dezny_env.lower() == "production":
+        raise RuntimeError("Object storage must be configured in production; local storage is not durable.")
     root = s.local_storage_dir.resolve()
     target = (root / PurePosixPath(key)).resolve()
     if root not in target.parents:
@@ -35,6 +37,8 @@ async def get_bytes(key: str) -> bytes:
     if s.object_storage_enabled:
         result = await asyncio.to_thread(_client().get_object, Bucket=s.s3_bucket, Key=key)
         return await asyncio.to_thread(result["Body"].read)
+    if s.dezny_env.lower() == "production":
+        raise RuntimeError("Object storage must be configured in production; local storage is not durable.")
     root = s.local_storage_dir.resolve()
     target = (root / PurePosixPath(key)).resolve()
     if root not in target.parents:
