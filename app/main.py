@@ -1,7 +1,8 @@
+import asyncio
 import hashlib
 import logging
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
@@ -23,8 +24,18 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    yield
-    await dispose_engine()
+    # Run ingestion in the API web service so the free-tier deployment does not
+    # require a paid always-on background worker.
+    from app.worker import run_worker
+
+    worker_task = asyncio.create_task(run_worker(), name="dezny-ingestion-worker")
+    try:
+        yield
+    finally:
+        worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await worker_task
+        await dispose_engine()
 
 
 app = FastAPI(title="Dezny API", description="Private legal study assistant for Nigerian law", version="0.1.0", lifespan=lifespan)
