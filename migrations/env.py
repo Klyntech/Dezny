@@ -33,9 +33,20 @@ def run_migrations_offline():
 
 def run_migrations_online():
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = database_url()
+    url = database_url()
+    from sqlalchemy.engine import make_url
+    parsed_url = make_url(url)
+    print(f"DEZNY_MIGRATION_TARGET host={parsed_url.host} database={parsed_url.database} driver={parsed_url.drivername}", flush=True)
+    configuration["sqlalchemy.url"] = url
     connectable = engine_from_config(configuration, prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
+        identity = connection.exec_driver_sql("""
+            SELECT current_database(), current_user, inet_server_addr()::text,
+                   current_schema(), current_setting('search_path'),
+                   to_regclass('public.ingestion_jobs')::text,
+                   to_regclass('public.alembic_version')::text
+        """).one()
+        print(f"DEZNY_MIGRATION_DB_IDENTITY={identity!r}", flush=True)
         connection.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():
