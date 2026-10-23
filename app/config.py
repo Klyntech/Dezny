@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     dezny_api_token: str | None = None
     dezny_api_url: str | None = None
     telegram_bot_token: str | None = None
-    telegram_allowed_user_ids: set[int] = set()
+    telegram_allowed_user_ids: str = ""
     nvidia_api_key: str | None = None
     nvidia_nim_base_url: str = "https://integrate.api.nvidia.com/v1"
     nvidia_chat_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1"
@@ -27,6 +27,18 @@ class Settings(BaseSettings):
     max_upload_mb: int = 20
     ocr_enabled: bool = True
     log_level: str = "INFO"
+
+    @property
+    def allowed_telegram_user_ids(self) -> set[int]:
+        ids: set[int] = set()
+        for value in self.telegram_allowed_user_ids.split(","):
+            value = value.strip()
+            if value:
+                try:
+                    ids.add(int(value))
+                except ValueError as exc:
+                    raise ValueError("TELEGRAM_ALLOWED_USER_IDS must contain comma-separated integers") from exc
+        return ids
 
     @property
     def object_storage_enabled(self) -> bool:
