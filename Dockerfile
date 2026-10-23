@@ -6,6 +6,7 @@ COPY pyproject.toml README.md ./
 COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini ./
-RUN pip install .
+COPY start-api.sh start-worker.sh ./
+RUN chmod +x /app/start-api.sh /app/start-worker.sh && pip install .
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
