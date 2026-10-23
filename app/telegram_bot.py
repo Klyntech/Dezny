@@ -24,7 +24,7 @@ MAX_TELEGRAM_UPLOAD_BYTES = settings.max_upload_mb * 1024 * 1024
 
 def allowed_user(message: Message) -> bool:
     user_id = message.from_user.id if message.from_user else None
-    return bool(user_id and user_id in settings.telegram_allowed_user_ids)
+    return bool(user_id and user_id in settings.allowed_telegram_user_ids)
 
 
 def api_headers() -> dict[str, str]:
@@ -156,7 +156,7 @@ async def answer_question(message: Message) -> None:
 async def main() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is required")
-    if not settings.telegram_allowed_user_ids:
+    if not settings.allowed_telegram_user_ids:
         raise RuntimeError("TELEGRAM_ALLOWED_USER_IDS must contain at least one numeric Telegram user ID")
     bot = Bot(token=settings.telegram_bot_token)
     try:
