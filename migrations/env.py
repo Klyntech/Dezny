@@ -20,6 +20,7 @@ def database_url():
     url = url.replace("postgres://", "postgresql+psycopg://", 1)
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    url = url.replace("?ssl=require", "?sslmode=require").replace("&ssl=require", "&sslmode=require")
     return url
 
 
