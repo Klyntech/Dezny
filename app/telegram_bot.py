@@ -140,6 +140,19 @@ async def answer_question(message: Message) -> None:
             response.raise_for_status()
             result = response.json()
         answer = str(result.get("answer") or result.get("response") or "No answer was returned.")
+        sources = result.get("sources") or []
+        if sources:
+            source_lines = ["", "Sources:"]
+            for source in sources:
+                marker = str(source.get("id") or "Source")
+                title = str(source.get("title") or "Untitled source")
+                if source.get("type") == "web" and source.get("url"):
+                    source_lines.append(f"{marker}: {title} — {source['url']}")
+                else:
+                    page = source.get("page")
+                    location = f", p. {page}" if page else ""
+                    source_lines.append(f"{marker}: {title}{location}")
+            answer += "\\n" + "\\n".join(source_lines)
         # Telegram message limit is 4096 characters; leave room for safe splitting.
         for start in range(0, len(answer), 3900):
             await message.answer(answer[start : start + 3900])
