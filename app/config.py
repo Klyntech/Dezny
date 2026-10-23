@@ -9,6 +9,9 @@ class Settings(BaseSettings):
 
     database_url: str | None = None
     dezny_api_token: str | None = None
+    dezny_api_url: str | None = None
+    telegram_bot_token: str | None = None
+    telegram_allowed_user_ids: set[int] = set()
     nvidia_api_key: str | None = None
     nvidia_nim_base_url: str = "https://integrate.api.nvidia.com/v1"
     nvidia_chat_model: str = "nvidia/llama-3.3-nemotron-super-49b-v1"
