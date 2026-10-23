@@ -52,7 +52,7 @@ async def process_job(job: dict) -> None:
             if not chunks:
                 raise ValueError("No readable text extracted; check scan quality and OCR setup.")
             vectors = []
-            if get_settings().nvidia_api_key:
+            if get_settings().nvidia_api_key and doc.sensitivity != "sensitive":
                 for offset in range(0, len(chunks), 32):
                     vectors.extend(await embed_texts([c["text"] for c in chunks[offset:offset+32]], "passage"))
             async with session.begin():
