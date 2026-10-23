@@ -17,6 +17,7 @@ class State(TypedDict, total=False):
     web_results: list[dict]
     answer: str
     sources: list[dict]
+    external_processing_allowed: bool
 
 
 async def retrieve(state: State) -> dict:
@@ -24,13 +25,16 @@ async def retrieve(state: State) -> dict:
     collection = state.get("collection_key", "default")
     found = []
     async with session_factory()() as session:
+        has_sensitive = (await session.execute(select(Document.id).where(Document.collection_key == collection, Document.sensitivity == "sensitive").limit(1))).first() is not None
+        if has_sensitive:
+            return {"documents": [], "external_processing_allowed": False}
         if settings.nvidia_api_key:
             vector = (await embed_texts([state["query"]], "query"))[0]
             distance = Chunk.embedding.cosine_distance(vector)
             rows = (await session.execute(
                 select(Chunk, Document, distance.label("distance"))
                 .join(Document, Chunk.document_id == Document.id)
-                .where(Chunk.collection_key == collection, Document.status == "indexed", Chunk.embedding.is_not(None))
+                .where(Chunk.collection_key == collection, Document.status == "indexed", Document.sensitivity != "sensitive", Chunk.embedding.is_not(None))
                 .order_by(distance).limit(8)
             )).all()
             for chunk, doc, score in rows:
@@ -41,7 +45,7 @@ async def retrieve(state: State) -> dict:
         rank = func.ts_rank(vector_text, tsquery)
         rows = (await session.execute(
             select(Chunk, Document, rank.label("rank")).join(Document, Chunk.document_id == Document.id)
-            .where(Chunk.collection_key == collection, Document.status == "indexed", vector_text.op("@@")(tsquery))
+            .where(Chunk.collection_key == collection, Document.status == "indexed", Document.sensitivity != "sensitive", vector_text.op("@@")(tsquery))
             .order_by(rank.desc()).limit(8)
         )).all()
         seen = {(item["title"], item["page"], item["text"]) for item in found}
@@ -50,10 +54,12 @@ async def retrieve(state: State) -> dict:
             if key not in seen:
                 found.append({"id": f"D{len(found)+1}", "title": doc.filename, "page": chunk.page_number,
                               "section": chunk.section, "text": chunk.text, "score": float(score) if score is not None else None})
-    return {"documents": found[:12]}
+    return {"documents": found[:12], "external_processing_allowed": True}
 
 
 async def web_search(state: State) -> dict:
+    if state.get("external_processing_allowed") is False:
+        return {"web_results": []}
     key = get_settings().tavily_api_key
     if not key:
         return {"web_results": []}
@@ -75,6 +81,8 @@ async def web_search(state: State) -> dict:
 
 
 async def compose(state: State) -> dict:
+    if state.get("external_processing_allowed") is False:
+        return {"answer": "External AI processing is disabled for this collection because it contains sensitive documents. To use these materials, configure a suitable local model or explicitly review and change the collection privacy policy.", "sources": []}
     if not get_settings().nvidia_api_key:
         raise NIMError("Set NVIDIA_API_KEY to enable answer generation.")
     blocks, sources = [], []
