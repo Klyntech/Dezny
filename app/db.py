@@ -10,7 +10,7 @@ def async_url(url: str) -> str:
     parsed = make_url(url)
     if parsed.drivername in {"postgres", "postgresql"}:
         parsed = parsed.set(drivername="postgresql+asyncpg")
-    return str(parsed)
+    return parsed.render_as_string(hide_password=False)
 
 
 def engine_options(url: str) -> tuple[str, dict]:
@@ -27,7 +27,7 @@ def engine_options(url: str) -> tuple[str, dict]:
             options["connect_args"] = {"ssl": "prefer"}
         elif sslmode in {"disable", "allow"}:
             options["connect_args"] = {"ssl": False}
-    return str(parsed), options
+    return parsed.render_as_string(hide_password=False), options
 
 
 _engine = None
