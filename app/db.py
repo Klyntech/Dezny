@@ -14,10 +14,15 @@ def async_url(url: str) -> str:
 
 
 def engine_options(url: str) -> tuple[str, dict]:
-    """Translate libpq's sslmode query option into asyncpg's ssl connect arg."""
+    """Translate libpq URL options into asyncpg-compatible connection settings."""
     parsed = make_url(async_url(url))
     query = dict(parsed.query)
+
+    # asyncpg does not accept libpq-only URL parameters as connect() keywords.
+    # Neon commonly appends channel_binding=require alongside sslmode=require.
     sslmode = query.pop("sslmode", None)
+    query.pop("channel_binding", None)
+
     parsed = parsed.set(query=query)
     options: dict = {}
     if sslmode:
@@ -27,6 +32,8 @@ def engine_options(url: str) -> tuple[str, dict]:
             options["connect_args"] = {"ssl": "prefer"}
         elif sslmode in {"disable", "allow"}:
             options["connect_args"] = {"ssl": False}
+        else:
+            raise ValueError("Unsupported PostgreSQL sslmode value")
     return parsed.render_as_string(hide_password=False), options
 
 
