@@ -30,7 +30,7 @@ async def claim_job():
                 return None
             job.status = "processing"
             job.attempts += 1
-            job.locked_at = datetime.now(timezone.utc)
+            job.locked_at = datetime.now(UTC)
             return {"job_id": job.id, "document_id": job.document_id, "attempts": job.attempts}
 
 
@@ -78,7 +78,7 @@ async def process_job(job: dict) -> None:
                     record.last_error = f"{type(exc).__name__}: {str(exc)[:1000]}"
                     record.locked_at = None
                     record.status = "retry" if record.attempts < MAX_ATTEMPTS else "failed"
-                    record.available_at = datetime.now(timezone.utc) + timedelta(seconds=min(300, 5 * 2 ** record.attempts))
+                    record.available_at = datetime.now(UTC) + timedelta(seconds=min(300, 5 * 2 ** record.attempts))
                 if current:
                     current.status = "failed"
                     current.error_message = f"{type(exc).__name__}: {str(exc)[:1000]}"
